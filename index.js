@@ -28,7 +28,7 @@ async function getLeagues(leagueName, countryId){
     }
     let url = `${HOST_URL}/?action=${ACTIONS.LEAGUES}&country_id=${countryId}&APIkey=${API_KEY}`
     // console.log(url, "League URL")
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         let r = https.get(url, (res) => {
             res.setEncoding('utf8');
             res.on('data', function (chunk) {
@@ -45,13 +45,8 @@ async function getLeagues(leagueName, countryId){
                         // console.log("Country Matched...", countryId)
                         // returncountries.country_id;
                     }
-                    else{
-                        return new Promise(resolve => {
-                            league_id = league.league_id;
-                            resolve(null)
-                        });
-                    }
                 });
+                reject("Invalid Response")
             });
         })
     })
@@ -68,7 +63,7 @@ async function getCountry(country_name){
     }
     let url = `${HOST_URL}/?action=${ACTIONS.COUNTRIES}&APIkey=${API_KEY}`
     // console.log(url);
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
     let r = https.get(url, (res) => {
         res.setEncoding('utf8');
         res.on('data', function (chunk) {
@@ -85,6 +80,7 @@ async function getCountry(country_name){
                     resolve(countries.country_id)
                     }
                 });
+            reject("Invalid Response")
             });
         })
     });
@@ -110,7 +106,7 @@ async function findStandings(leagueId, teamName, countryId){
     }
     let url = `${HOST_URL}/?action=${ACTIONS.STANDINGS}&league_id=${leagueId}&APIkey=${API_KEY}`
     console.log(url)
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         var incomingData = "";
         https.get(url, (req, res) => {
             req.setEncoding('utf8');
@@ -142,7 +138,8 @@ async function findStandings(leagueId, teamName, countryId){
                         }
                         resolve(final_response)
                         }
-                    });   
+                    });
+                reject("Invalid Response")   
             })
             })
         });
@@ -179,18 +176,23 @@ app.get('/', (req, res) => {
     res.send("Done")
 })
 app.post('/v1/standings', async function getStandings(req, res){
-    let country_name = req.body.country_name
-    let team_name = req.body.team_name
-    let league_name = req.body.league_name
+    if (req.body.country_name && req.body.team_name && req.body.league_name){
+        let country_name = req.body.country_name
+        let team_name = req.body.team_name
+        let league_name = req.body.league_name
 
-    let countryId = await getCountry(country_name);
-    let leagueId = await getLeagues(league_name,countryId)
-    console.log(countryId, "country_id")
-    console.log(leagueId, "leagueId")
+        let countryId = await getCountry(country_name);
+        let leagueId = await getLeagues(league_name,countryId)
+        console.log(countryId, "country_id")
+        console.log(leagueId, "leagueId")
 
-    let standings_result = await findStandings(leagueId, team_name, countryId) 
-    console.log(standings_result);
-    res.send(standings_result)
+        let standings_result = await findStandings(leagueId, team_name, countryId) 
+        console.log(standings_result);
+        res.send(standings_result)
+    }
+    else{
+        res.sendStatus(400)
+    }
 })
 
 app.listen(PORT, () => {
